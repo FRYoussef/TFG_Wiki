@@ -205,6 +205,11 @@ def main(*args):
     
     if 'list' in opts:
         print('Processing list of links')
+        if 'storepath' not in opts:
+            folder = opts['list']
+            folderName = folder.split('.')
+            os.mkdir(folderName[0])
+            opts['storepath'] = folderName[0] 
         articleList = dump_list(opts['list'])
         for article in articleList:
             opts['article'] = article
