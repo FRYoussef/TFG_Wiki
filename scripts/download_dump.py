@@ -7,7 +7,9 @@ This script supports the following command line parameters:
 
     -article:#     The article's name to download (e.g. Scene7)
 
-    -storepath:#    The stored file's path (without extension, it´s going to store as .xml)
+    -list:#        The list of articles to download
+
+    -storepath:#   The stored file's path (without extension, it´s going to store as .xml)
 
 """
 #
@@ -21,6 +23,8 @@ This script supports the following command line parameters:
 from __future__ import absolute_import, division, unicode_literals
 
 import binascii
+
+import csv
 
 import os.path
 import sys
@@ -49,12 +53,14 @@ class Dump_downloader():
     availableOptions = {
     'wikiname': 'Wikipedia',
     'article': '',
+    'list': '',
     'storepath': './',
     'download_offset': '1',
     'download_limit': '$wgExportMaxHistory'
     }
 
     def __init__(self, params):
+
         self.availableOptions['article'] = params['article']
         if('storepath' in params):
             self.availableOptions['storepath'] = params['storepath']
@@ -126,7 +132,25 @@ class Dump_downloader():
         print('Done! File stored as ' + file_final_storepath +
               '\nTotal: ' + str(size) + 'MB')
         return
+def dump_list(name):
+    """
+    This method process the file with the list of articles to download
+    It reads the file splitting it in lines and stores each article name
 
+    """
+    
+    with open(name) as file:
+        content = file.read().splitlines()
+
+    articleList = []
+
+    for line in content:
+        split = line.split('/')
+        #Directions are "https://en.wikipedia.org/wiki/articleName hence the split[4] hardcoded.
+        articleList.append(split[4])
+
+    return articleList
+    
 
 def main(*args):
     """
@@ -149,6 +173,10 @@ def main(*args):
                 opts[option] = value or input(
                     'Enter the article: ')
                 continue
+            elif option == 'list':
+                opts[option] = value or input(
+                    'Enter the list of articles: ')
+                continue
             elif option == 'storepath':
                 opts[option] = os.path.abspath(value) or input(
                     'Enter the store path: ')
@@ -157,15 +185,26 @@ def main(*args):
         unknown_args += [arg]
 
     missing = []
-    if 'article' not in opts:
+    if 'list' not in opts and 'article' not in opts:
         missing += ['-article']
+        missing += ['-list']
 
     if missing or unknown_args:
         print('HELP: python script_path -article:article_name [-storepath:path]')
+        print('HELP: It is also possible to use -list instead of -article for lists of articles')
         return 1
-
-    dump_down = Dump_downloader(opts)
-    dump_down.run()
+    
+    if 'list' in opts:
+        print('Processing list of links')
+        articleList = dump_list(opts['list'])
+        for article in articleList:
+            opts['article'] = article
+            dump_down = Dump_downloader(opts)
+            dump_down.run()
+            return 2
+    else:
+        dump_down = Dump_downloader(opts)
+        dump_down.run()
 
     return 0
 
