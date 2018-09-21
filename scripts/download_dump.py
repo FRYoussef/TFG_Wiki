@@ -11,9 +11,11 @@ This script supports the following command line parameters:
 
     -storepath:#   The stored file's path (without extension, it´s going to store as .xml)
 
+    -lang:#        The language of the wiki to use, default "es"
+
 """
 #
-# Authors: Youssef El Faqir El Rhazoui,
+# Authors: Youssef El Faqir El Rhazoui, Ignacio Garcia Sanchez-Migallon
 # Date: 21/09/2018
 # Distributed under the terms of the GPLv3 license.
 #
@@ -54,6 +56,7 @@ class Dump_downloader():
     'wikiname': 'Wikipedia',
     'article': '',
     'list': '',
+    'lang': 'es',
     'storepath': './',
     'download_offset': '1',
     'download_limit': '$wgExportMaxHistory'
@@ -64,6 +67,8 @@ class Dump_downloader():
         self.availableOptions['article'] = params['article']
         if('storepath' in params):
             self.availableOptions['storepath'] = params['storepath']
+        if('lang' in params):
+            self.availableOptions['lang'] = params['lang']
 
 
     def run(self):
@@ -83,7 +88,7 @@ class Dump_downloader():
         # Second iteration for fallback non-atomic download
         for non_atomic in range(2):
             try:
-                url = 'https://en.wikipedia.org/w/index.php?title=Special:Export'
+                url = 'https://' + self.availableOptions['lang'] + '.wikipedia.org/w/index.php?title=Special:Export'
                 print('Downloading file from: ' + url)
                 response = requests.post(url, data={'pages': self.availableOptions['article'], 
                     'offset': self.availableOptions['download_offset'], 
@@ -181,6 +186,10 @@ def main(*args):
                 opts[option] = os.path.abspath(value) or input(
                     'Enter the store path: ')
                 continue
+            elif option == 'lang':
+                opts[option] = value or input(
+                    'Enter the language of the wiki to use: ')
+                continue
 
         unknown_args += [arg]
 
@@ -201,7 +210,7 @@ def main(*args):
             opts['article'] = article
             dump_down = Dump_downloader(opts)
             dump_down.run()
-            return 2
+        return 2
     else:
         dump_down = Dump_downloader(opts)
         dump_down.run()
