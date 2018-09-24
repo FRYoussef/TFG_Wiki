@@ -23,7 +23,7 @@ This script supports the following command line parameters:
 #
 
 from __future__ import absolute_import, division, unicode_literals
-
+import xml.dom.minidom as minidom
 import binascii
 
 import csv
@@ -52,30 +52,39 @@ except ImportError:   # py2
 
 class Dump_downloader():
 
+    part = 1
+    final_timestamp = 'undefined'
+    curr_timestamp = 'first'
+    total_size = 0
+    url = ''
     availableOptions = {
     'wikiname': 'Wikipedia',
     'article': '',
     'list': '',
-    'lang': 'es',
+    'lang': 'en',
     'storepath': './',
-    'download_offset': '1',
     'download_limit': '$wgExportMaxHistory'
     }
 
     def __init__(self, params):
 
+        
         self.availableOptions['article'] = params['article']
         if('storepath' in params):
             self.availableOptions['storepath'] = params['storepath']
         if('lang' in params):
             self.availableOptions['lang'] = params['lang']
+        self.url = 'https://' + self.availableOptions['lang'] + '.wikipedia.org/w/index.php?title=Special:Export'
 
+    def download_chunk(self, download_file, data_request):
+        """
+        It downloads maxHistory of revisions as a part of final file
+        """
 
-    def run(self):
-
-        print('Downloading dump from ' + self.availableOptions['wikiname'])
-        download_file = '{article}.xml'.format(
-            article=self.availableOptions['article'])
+        #print('Downloading dump from ' + self.availableOptions['wikiname'])
+        # download_file = '{article}_part{part}.xml'.format(
+        #     article=self.availableOptions['article'],
+        #     part=self.part)
         temp_file = download_file + '-' + \
             binascii.b2a_hex(urandom(8)).decode('ascii') + '.part'
 
@@ -88,18 +97,15 @@ class Dump_downloader():
         # Second iteration for fallback non-atomic download
         for non_atomic in range(2):
             try:
-                url = 'https://' + self.availableOptions['lang'] + '.wikipedia.org/w/index.php?title=Special:Export'
-                print('Downloading file from: ' + url)
-                response = requests.post(url, data={'pages': self.availableOptions['article'], 
-                    'offset': self.availableOptions['download_offset'], 
-                    'limit': self.availableOptions['download_limit'], 'action': 'submit'})
-
+                print('Downloading file from: ' + self.url)
+                # response = requests.post(self.url, data={'pages': self.availableOptions['article'], 
+                #     'offset': self.curr_timestamp, 
+                #     'limit': self.availableOptions['download_limit'], 'action': 'submit'})
+                response = requests.post(self.url, data_request)
                 if response.status_code == 200:
                     with open(file_current_storepath, 'wb') as result_file:
-                        print('')
                         for data in response.iter_content(100 * 1024):
                             result_file.write(data)
-                        print('')
 
                 elif response.status_code == 404:
                     print(
@@ -107,7 +113,7 @@ class Dump_downloader():
                         'and wiki "{wikiname}" ({url}) isn\'t '
                         'available'.format(
                             article=self.availableOptions['article'],
-                            url=url,
+                            url=self.url,
                             wikiname=self.availableOptions['wikiname']))
                     return
                 else:
@@ -134,9 +140,39 @@ class Dump_downloader():
                     return False
 
         size = (sum(len(chunk) for chunk in response.iter_content(8196)))/1000000
+        self.total_size += size
         print('Done! File stored as ' + file_final_storepath +
               '\nTotal: ' + str(size) + 'MB')
         return
+
+    def get_final_timestamp(self):
+        """
+        It gets the last article´s revision and updates the final timestamp
+        """
+        data={'pages': self.availableOptions['article'], 'curonly': 'true', 'action': 'submit'}
+        file_name = '{}_temp.xml'.format(self.availableOptions['article'])
+        self.download_chunk(file_name, data)
+
+        # Now, we are going to find the revision´s timestamp
+        doc = minidom.parse(file_name)
+        self.final_timestamp = doc.getElementsByTagName('timestamp')[0].firstChild.nodeValue
+        remove(file_name)
+        self.total_size = 0
+        print('Removed the file: {}'.format(file_name))
+
+
+    def run(self):
+        """
+        It manages article´s download joining the parts
+        """
+        self.get_final_timestamp()
+
+
+
+
+
+
+
 def dump_list(name):
     """
     This method process the file with the list of articles to download
