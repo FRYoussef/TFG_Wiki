@@ -25,14 +25,12 @@ This script supports the following command line parameters:
 from __future__ import absolute_import, division, unicode_literals
 import xml.dom.minidom as minidom
 import binascii
-
-import csv
-
 import os.path
 import sys
 import requests
-
+import datetime
 from os import remove, symlink, urandom
+
 
 try:
     from os import replace
@@ -71,7 +69,9 @@ class Dump_downloader():
         
         self.availableOptions['article'] = params['article']
         if('storepath' in params):
-            self.availableOptions['storepath'] = params['storepath']
+            self.availableOptions['storepath'] = params['storepath'] + '/' + params['article']
+        else:
+            self.availableOptions['storepath'] += params['article']
         if('lang' in params):
             self.availableOptions['lang'] = params['lang']
         self.url = 'https://' + self.availableOptions['lang'] + '.wikipedia.org/w/index.php?title=Special:Export'
@@ -106,7 +106,6 @@ class Dump_downloader():
                     with open(file_current_storepath, 'wb') as result_file:
                         for data in response.iter_content(100 * 1024):
                             result_file.write(data)
-
                 elif response.status_code == 404:
                     print(
                         'File with name "{article}", '
@@ -141,35 +140,80 @@ class Dump_downloader():
 
         size = (sum(len(chunk) for chunk in response.iter_content(8196)))/1000000
         self.total_size += size
-        print('Done! File stored as ' + file_final_storepath +
-              '\nTotal: ' + str(size) + 'MB')
+        print('Done! File stored as {}\nTotal: {}MB'.format(file_final_storepath, round(size, 3)))
         return
 
     def get_final_timestamp(self):
         """
         It gets the last article´s revision and updates the final timestamp
         """
-        data={'pages': self.availableOptions['article'], 'curonly': 'true', 'action': 'submit'}
+        ret = 0
+        data={'pages': self.availableOptions['article'], 'curonly': 'true',
+              'action': 'submit'}
         file_name = '{}_temp.xml'.format(self.availableOptions['article'])
         self.download_chunk(file_name, data)
 
-        # Now, we are going to find the revision´s timestamp
+        # Now, we are going to find the revision´s timestamp.
+        file_name = os.path.join(self.availableOptions['storepath'], file_name)
         doc = minidom.parse(file_name)
-        self.final_timestamp = doc.getElementsByTagName('timestamp')[0].firstChild.nodeValue
+        if not doc.getElementsByTagName('timestamp').length:
+            print('Timestamp not found')
+            ret=1
+        else:
+            self.final_timestamp = timestamp_to_datetime(
+                doc.getElementsByTagName('timestamp')[0].firstChild.nodeValue)
         remove(file_name)
         self.total_size = 0
-        print('Removed the file: {}'.format(file_name))
+        print('Removed the file {}'.format(file_name))
+        return ret
 
 
     def run(self):
         """
         It manages article´s download joining the parts
         """
-        self.get_final_timestamp()
+        if not os.path.exists(self.availableOptions['storepath']):
+            os.makedirs(self.availableOptions['storepath'])
+
+        if self.get_final_timestamp():
+            print('The article \"{}\" isn´t available'.format(self.availableOptions['article']))
+            return 1
+        else:
+            curr=''
+            while curr == '' or self.final_timestamp > curr:
+                file_name = '{art}_part{part}.xml'.format(art=self.availableOptions['article'], 
+                            part=self.part)
+                data={'pages': self.availableOptions['article'], 'offset': self.curr_timestamp, 
+                      'limit': self.availableOptions['download_limit'], 'action': 'submit'}
+                self.download_chunk(file_name, data)
+                timestamps = minidom.parse(os.path.join(self.availableOptions['storepath'], 
+                    file_name)).getElementsByTagName('timestamp')
+                if not timestamps.length:
+                    #No timestamps, you have to handle the error
+                    return 1
+                else:
+                    curr = timestamp_to_datetime(timestamps[timestamps.length-1].firstChild.nodeValue) 
+                    + datetime.timedelta(seconds=1)
+                    self.curr_timestamp = '{0}-{1}-{2}T{3}:{4}:{5}Z'.format(curr.strftime('%Y'), 
+                        curr.strftime('%m'), curr.strftime('%d'), curr.strftime('%H'), 
+                        curr.strftime('%M'), curr.strftime('%S'))
+                self.part += 1
+
+            print('----------------------------------------------------------------------------------')
+            print('The article \"{0}\" has been downloaded as {1} chunks in {2}'
+                .format(self.availableOptions['article'], self.part, self.availableOptions['storepath']))
+            print('Total downloaded: {}MB'.format(round(self.total_size), 3))
 
 
 
-
+def timestamp_to_datetime(timestamp):
+    """ 
+    It takes a ISO 8601 date from text and returns a object datetime
+    """
+    timestamp = timestamp.split('T')
+    date = timestamp[0].split('-')
+    time = timestamp[1].replace('Z', '').split(':')
+    return datetime.datetime(int(date[0]), int(date[1]), int(date[2]), int(time[0]), int(time[1]), int(time[2]), 0)
 
 
 
