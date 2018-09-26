@@ -29,6 +29,7 @@ import os.path
 import sys
 import requests
 import datetime
+import shutil
 from os import remove, symlink, urandom
 
 
@@ -59,7 +60,7 @@ class Dump_downloader():
     'wikiname': 'Wikipedia',
     'article': '',
     'list': '',
-    'lang': 'en',
+    'lang': 'es',
     'storepath': './',
     'download_limit': '$wgExportMaxHistory'
     }
@@ -203,6 +204,9 @@ class Dump_downloader():
             print('The article \"{0}\" has been downloaded as {1} chunks in {2}'
                 .format(self.availableOptions['article'], self.part, self.availableOptions['storepath']))
             print('Total downloaded: {}MB'.format(round(self.total_size), 3))
+            print('----------------------------------------------------------------------------------')
+            join_chunks(self.availableOptions['article'], self.availableOptions['storepath'], self.part)
+
 
 
 
@@ -235,6 +239,23 @@ def dump_list(name):
         articleList.append(split[4])
 
     return articleList
+
+def join_chunks(name, path, chunksQuantity):
+    """
+    This method joins the different chunks of one article into one xml file
+    """
+
+    fileName = str(path) + '\\' + str(name) + ".xml"
+    
+    with open(fileName, 'w+') as file:
+        for i in range (1,chunksQuantity):
+            chunkName = str(path) + '\\' + str(name) + '_part' + str(i) + ".xml"
+            with open(chunkName, errors = 'ignore') as chunkFile:
+               # content = chunkFile.read().splitlines()
+               # for line in content:
+               #     file.write(line + '\n')
+               file.write(chunkFile.read())
+            os.remove(chunkName)
     
 
 def main(*args):
@@ -288,8 +309,11 @@ def main(*args):
         if 'storepath' not in opts:
             folder = opts['list']
             folderName = folder.split('.')
+            if os.path.exists(folderName[0]) :
+               shutil.rmtree(folderName[0])
             os.mkdir(folderName[0])
-            opts['storepath'] = folderName[0] 
+            opts['storepath'] = folderName[0]
+                              
         articleList = dump_list(opts['list'])
         for article in articleList:
             opts['article'] = article
