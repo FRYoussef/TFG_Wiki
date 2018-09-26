@@ -257,6 +257,9 @@ def join_chunks(name, path, chunksQuantity):
                file.write(chunkFile.read())
             os.remove(chunkName)
     
+    print('----------------------------------------------------------------------------------')
+    print('The article ' + name + ' has been merged into one file')        
+    print('----------------------------------------------------------------------------------')
 
 def main(*args):
     """
