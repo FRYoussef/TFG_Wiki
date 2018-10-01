@@ -247,14 +247,22 @@ def join_chunks(name, path, chunksQuantity):
 
     fileName = str(path) + '\\' + str(name) + ".xml"
     
-    with open(fileName, 'w+') as file:
+    with open(fileName,'w+', encoding='utf8') as file:
         for i in range (1,chunksQuantity):
             chunkName = str(path) + '\\' + str(name) + '_part' + str(i) + ".xml"
-            with open(chunkName, errors = 'ignore') as chunkFile:
-               # content = chunkFile.read().splitlines()
-               # for line in content:
-               #     file.write(line + '\n')
-               file.write(chunkFile.read())
+            with open(chunkName,encoding='utf8', errors = 'ignore') as chunkFile:
+               content = chunkFile.read().splitlines()
+               if i != 1:
+                   content = content[44:]
+               for line in content:
+                    if i != chunksQuantity - 1:
+                        if( "</page>" not in line and "</mediawiki>" not in line):
+                            file.write(line + '\n')
+                    else:
+                        #print(chunksQuantity)
+                        file.write(line + '\n')
+                        
+               #file.write(chunkFile.read())
             os.remove(chunkName)
     
     print('----------------------------------------------------------------------------------')
