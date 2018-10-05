@@ -23,16 +23,15 @@ This script supports the following command line parameters:
 #
 
 from __future__ import absolute_import, division, unicode_literals
-
+import xml.dom.minidom as minidom
 import binascii
-
-import csv
-
 import os.path
 import sys
 import requests
-
+import datetime
+import shutil
 from os import remove, symlink, urandom
+
 
 try:
     from os import replace
@@ -52,30 +51,41 @@ except ImportError:   # py2
 
 class Dump_downloader():
 
+    part = 1
+    final_timestamp = 'undefined'
+    curr_timestamp = 'first'
+    total_size = 0
+    url = ''
     availableOptions = {
     'wikiname': 'Wikipedia',
     'article': '',
     'list': '',
     'lang': 'es',
     'storepath': './',
-    'download_offset': '1',
     'download_limit': '$wgExportMaxHistory'
     }
 
     def __init__(self, params):
 
+        
         self.availableOptions['article'] = params['article']
         if('storepath' in params):
-            self.availableOptions['storepath'] = params['storepath']
+            self.availableOptions['storepath'] = params['storepath'] + '/' + params['article']
+        else:
+            self.availableOptions['storepath'] += params['article']
         if('lang' in params):
             self.availableOptions['lang'] = params['lang']
+        self.url = 'https://' + self.availableOptions['lang'] + '.wikipedia.org/w/index.php?title=Special:Export'
 
+    def download_chunk(self, download_file, data_request):
+        """
+        It downloads maxHistory of revisions as a part of final file
+        """
 
-    def run(self):
-
-        print('Downloading dump from ' + self.availableOptions['wikiname'])
-        download_file = '{article}.xml'.format(
-            article=self.availableOptions['article'])
+        #print('Downloading dump from ' + self.availableOptions['wikiname'])
+        # download_file = '{article}_part{part}.xml'.format(
+        #     article=self.availableOptions['article'],
+        #     part=self.part)
         temp_file = download_file + '-' + \
             binascii.b2a_hex(urandom(8)).decode('ascii') + '.part'
 
@@ -88,26 +98,19 @@ class Dump_downloader():
         # Second iteration for fallback non-atomic download
         for non_atomic in range(2):
             try:
-                url = 'https://' + self.availableOptions['lang'] + '.wikipedia.org/w/index.php?title=Special:Export'
-                print('Downloading file from: ' + url)
-                response = requests.post(url, data={'pages': self.availableOptions['article'], 
-                    'offset': self.availableOptions['download_offset'], 
-                    'limit': self.availableOptions['download_limit'], 'action': 'submit'})
-
+                print('Downloading file from: {}'.format(self.url))
+                response = requests.post(self.url, data_request)
                 if response.status_code == 200:
                     with open(file_current_storepath, 'wb') as result_file:
-                        print('')
                         for data in response.iter_content(100 * 1024):
                             result_file.write(data)
-                        print('')
-
                 elif response.status_code == 404:
                     print(
                         'File with name "{article}", '
                         'and wiki "{wikiname}" ({url}) isn\'t '
                         'available'.format(
                             article=self.availableOptions['article'],
-                            url=url,
+                            url=self.url,
                             wikiname=self.availableOptions['wikiname']))
                     return
                 else:
@@ -134,9 +137,116 @@ class Dump_downloader():
                     return False
 
         size = (sum(len(chunk) for chunk in response.iter_content(8196)))/1000000
-        print('Done! File stored as ' + file_final_storepath +
-              '\nTotal: ' + str(size) + 'MB')
+        self.total_size += size
+        print('\nDone! File stored as {}\nTotal: {}MB'.format(file_final_storepath, round(size, 3)))
         return
+
+    def get_final_timestamp(self):
+        """
+        It gets the last article´s revision and updates the final timestamp
+        """
+        ret = 0
+        data={'pages': self.availableOptions['article'], 'curonly': 'true',
+              'action': 'submit'}
+        file_name = '{}_temp.xml'.format(self.availableOptions['article'])
+        self.download_chunk(file_name, data)
+
+        # Now, we are going to find the revision´s timestamp.
+        file_name = os.path.join(self.availableOptions['storepath'], file_name)
+        doc = minidom.parse(file_name)
+        if not doc.getElementsByTagName('timestamp').length:
+            print('Timestamp not found')
+            ret=1
+        else:
+            self.final_timestamp = timestamp_to_datetime(
+                doc.getElementsByTagName('timestamp')[0].firstChild.nodeValue)
+        remove(file_name)
+        self.total_size = 0
+        print('Removed the file {}'.format(file_name))
+        return ret
+
+
+    def join_chunks(self):
+	    """
+	    This method joins the different chunks of one article into one xml file
+	    """
+	    print('Joining chunks....')
+	    file_name = os.path.join(self.availableOptions['storepath'], '{}.xml'.format(self.availableOptions['article']))
+	    
+	    with open(file_name,'w+', encoding='utf8') as file:
+	        for i in range (1, self.part):
+	            chunk_name = os.path.join(self.availableOptions['storepath'], '{0}_part{1}.xml'
+	            	.format(self.availableOptions['article'], i))
+	            with open(chunk_name,encoding='utf8', errors = 'ignore') as chunk_file:
+	               content = chunk_file.read().splitlines()
+	               if i != 1:
+	                   content = content[44:]
+	               for line in content:
+	                    if i != self.part - 1:
+	                        if( "</page>" not in line and "</mediawiki>" not in line):
+	                            file.write(line + '\n')
+	                    else:
+	                        file.write(line + '\n')
+	                        
+	            os.remove(chunk_name)
+	    
+	    print('----------------------------------------------------------------------------------')
+	    print('The article {} has been merged into one file'.format(self.availableOptions['article']))
+	    print('----------------------------------------------------------------------------------')
+
+
+    def run(self):
+        """
+        It manages article´s download joining the parts
+        """
+        if not os.path.exists(self.availableOptions['storepath']):
+            os.makedirs(self.availableOptions['storepath'])
+
+        if self.get_final_timestamp():
+            print('The article \"{}\" isn´t available'.format(self.availableOptions['article']))
+            return 1
+        else:
+            curr=''
+            while curr == '' or self.final_timestamp > curr:
+                file_name = '{art}_part{part}.xml'.format(art=self.availableOptions['article'], 
+                            part=self.part)
+                data={'pages': self.availableOptions['article'], 'offset': self.curr_timestamp, 
+                      'limit': self.availableOptions['download_limit'], 'action': 'submit'}
+                self.download_chunk(file_name, data)
+                timestamps = minidom.parse(os.path.join(self.availableOptions['storepath'], 
+                    file_name)).getElementsByTagName('timestamp')
+                if not timestamps.length:
+                    #No timestamps, you have to handle the error
+                    return 1
+                else:
+                    curr = timestamp_to_datetime(timestamps[timestamps.length-1].firstChild.nodeValue) 
+                    + datetime.timedelta(seconds=1)
+                    self.curr_timestamp = '{0}-{1}-{2}T{3}:{4}:{5}Z'.format(curr.strftime('%Y'), 
+                        curr.strftime('%m'), curr.strftime('%d'), curr.strftime('%H'), 
+                        curr.strftime('%M'), curr.strftime('%S'))
+                self.part += 1
+
+            print('----------------------------------------------------------------------------------')
+            print('The article \"{0}\" has been downloaded as {1} chunks in {2}'
+                .format(self.availableOptions['article'], self.part, self.availableOptions['storepath']))
+            print('Total downloaded: {}MB'.format(round(self.total_size), 3))
+            print('----------------------------------------------------------------------------------')
+            self.join_chunks()
+
+
+
+
+def timestamp_to_datetime(timestamp):
+    """ 
+    It takes a ISO 8601 date from text and returns a object datetime
+    """
+    timestamp = timestamp.split('T')
+    date = timestamp[0].split('-')
+    time = timestamp[1].replace('Z', '').split(':')
+    return datetime.datetime(int(date[0]), int(date[1]), int(date[2]), int(time[0]), int(time[1]), int(time[2]), 0)
+
+
+
 def dump_list(name):
     """
     This method process the file with the list of articles to download
@@ -155,7 +265,6 @@ def dump_list(name):
         articleList.append(split[4])
 
     return articleList
-    
 
 def main(*args):
     """
@@ -208,8 +317,11 @@ def main(*args):
         if 'storepath' not in opts:
             folder = opts['list']
             folderName = folder.split('.')
+            if os.path.exists(folderName[0]) :
+               shutil.rmtree(folderName[0])
             os.mkdir(folderName[0])
-            opts['storepath'] = folderName[0] 
+            opts['storepath'] = folderName[0]
+                              
         articleList = dump_list(opts['list'])
         for article in articleList:
             opts['article'] = article
