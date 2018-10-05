@@ -98,10 +98,7 @@ class Dump_downloader():
         # Second iteration for fallback non-atomic download
         for non_atomic in range(2):
             try:
-                print('Downloading file from: ' + self.url)
-                # response = requests.post(self.url, data={'pages': self.availableOptions['article'], 
-                #     'offset': self.curr_timestamp, 
-                #     'limit': self.availableOptions['download_limit'], 'action': 'submit'})
+                print('Downloading file from: {}'.format(self.url))
                 response = requests.post(self.url, data_request)
                 if response.status_code == 200:
                     with open(file_current_storepath, 'wb') as result_file:
@@ -141,7 +138,7 @@ class Dump_downloader():
 
         size = (sum(len(chunk) for chunk in response.iter_content(8196)))/1000000
         self.total_size += size
-        print('Done! File stored as {}\nTotal: {}MB'.format(file_final_storepath, round(size, 3)))
+        print('\nDone! File stored as {}\nTotal: {}MB'.format(file_final_storepath, round(size, 3)))
         return
 
     def get_final_timestamp(self):
@@ -167,6 +164,35 @@ class Dump_downloader():
         self.total_size = 0
         print('Removed the file {}'.format(file_name))
         return ret
+
+
+    def join_chunks(self):
+	    """
+	    This method joins the different chunks of one article into one xml file
+	    """
+	    print('Joining chunks....')
+	    file_name = os.path.join(self.availableOptions['storepath'], '{}.xml'.format(self.availableOptions['article']))
+	    
+	    with open(file_name,'w+', encoding='utf8') as file:
+	        for i in range (1, self.part):
+	            chunk_name = os.path.join(self.availableOptions['storepath'], '{0}_part{1}.xml'
+	            	.format(self.availableOptions['article'], i))
+	            with open(chunk_name,encoding='utf8', errors = 'ignore') as chunk_file:
+	               content = chunk_file.read().splitlines()
+	               if i != 1:
+	                   content = content[44:]
+	               for line in content:
+	                    if i != self.part - 1:
+	                        if( "</page>" not in line and "</mediawiki>" not in line):
+	                            file.write(line + '\n')
+	                    else:
+	                        file.write(line + '\n')
+	                        
+	            os.remove(chunk_name)
+	    
+	    print('----------------------------------------------------------------------------------')
+	    print('The article {} has been merged into one file'.format(self.availableOptions['article']))
+	    print('----------------------------------------------------------------------------------')
 
 
     def run(self):
@@ -205,7 +231,7 @@ class Dump_downloader():
                 .format(self.availableOptions['article'], self.part, self.availableOptions['storepath']))
             print('Total downloaded: {}MB'.format(round(self.total_size), 3))
             print('----------------------------------------------------------------------------------')
-            join_chunks(self.availableOptions['article'], self.availableOptions['storepath'], self.part)
+            self.join_chunks()
 
 
 
@@ -239,35 +265,6 @@ def dump_list(name):
         articleList.append(split[4])
 
     return articleList
-
-def join_chunks(name, path, chunksQuantity):
-    """
-    This method joins the different chunks of one article into one xml file
-    """
-
-    fileName = str(path) + '\\' + str(name) + ".xml"
-    
-    with open(fileName,'w+', encoding='utf8') as file:
-        for i in range (1,chunksQuantity):
-            chunkName = str(path) + '\\' + str(name) + '_part' + str(i) + ".xml"
-            with open(chunkName,encoding='utf8', errors = 'ignore') as chunkFile:
-               content = chunkFile.read().splitlines()
-               if i != 1:
-                   content = content[44:]
-               for line in content:
-                    if i != chunksQuantity - 1:
-                        if( "</page>" not in line and "</mediawiki>" not in line):
-                            file.write(line + '\n')
-                    else:
-                        #print(chunksQuantity)
-                        file.write(line + '\n')
-                        
-               #file.write(chunkFile.read())
-            os.remove(chunkName)
-    
-    print('----------------------------------------------------------------------------------')
-    print('The article ' + name + ' has been merged into one file')        
-    print('----------------------------------------------------------------------------------')
 
 def main(*args):
     """
