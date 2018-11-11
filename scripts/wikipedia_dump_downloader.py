@@ -60,7 +60,7 @@ class Dump_downloader():
     'wikiname': 'Wikipedia',
     'article': '',
     'list': '',
-    'lang': 'es',
+    'lang': 'en',
     'storepath': './',
     'download_limit': '$wgExportMaxHistory'
     }
