@@ -3,7 +3,6 @@ import pandas as pd
 import sys
 import os
 
-article = pd.read_csv('leche/leche.csv')
 
 title = ''
 
@@ -42,7 +41,7 @@ class revision_extractor():
     def revision_id_extractor(self):
 
         base_file_name = self.article['article'] + '/' + self.article['article'] + '.csv'
-        base_file = pd.read_csv(base_file_name)
+        base_file = pd.read_csv(base_file_name, error_bad_lines=False)
 
         output_file_name = 'revision_ids_' + self.article['article'] + '.csv'
         output_file = pd.DataFrame(columns = ['rev_id','labels'])
