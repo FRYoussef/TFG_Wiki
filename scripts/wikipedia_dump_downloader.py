@@ -60,7 +60,7 @@ class Dump_downloader():
     'wikiname': 'Wikipedia',
     'article': '',
     'list': '',
-    'lang': 'en',
+    'lang': 'es',
     'storepath': './',
     'download_limit': '$wgExportMaxHistory'
     }
@@ -167,32 +167,32 @@ class Dump_downloader():
 
 
     def join_chunks(self):
-	    """
-	    This method joins the different chunks of one article into one xml file
-	    """
-	    print('Joining chunks....')
-	    file_name = os.path.join(self.availableOptions['storepath'], '{}.xml'.format(self.availableOptions['article']))
-	    
-	    with open(file_name,'w+', encoding='utf8') as file:
-	        for i in range (1, self.part):
-	            chunk_name = os.path.join(self.availableOptions['storepath'], '{0}_part{1}.xml'
-	            	.format(self.availableOptions['article'], i))
-	            with open(chunk_name,encoding='utf8', errors = 'ignore') as chunk_file:
-	               content = chunk_file.read().splitlines()
-	               if i != 1:
-	                   content = content[44:]
-	               for line in content:
-	                    if i != self.part - 1:
-	                        if( "</page>" not in line and "</mediawiki>" not in line):
-	                            file.write(line + '\n')
-	                    else:
-	                        file.write(line + '\n')
-	                        
-	            os.remove(chunk_name)
-	    
-	    print('----------------------------------------------------------------------------------')
-	    print('The article {} has been merged into one file'.format(self.availableOptions['article']))
-	    print('----------------------------------------------------------------------------------')
+                """
+                This method joins the different chunks of one article into one xml file
+                """
+                print('Joining chunks....')
+                file_name = os.path.join(self.availableOptions['storepath'], '{}.xml'.format(self.availableOptions['article']))
+                
+                with open(file_name,'w+', encoding='utf8') as file:
+                    for i in range (1, self.part):
+                        chunk_name = os.path.join(self.availableOptions['storepath'], '{0}_part{1}.xml'
+                            .format(self.availableOptions['article'], i))
+                        with open(chunk_name,encoding='utf8', errors = 'ignore') as chunk_file:
+                            content_file = chunk_file.read()
+                            content = content_file.splitlines()
+                            if i != 1:
+                                content = content[44:]
+                            for line in content:
+                                if i != self.part - 1:
+                                    if( "</page>" not in line and "</mediawiki>" not in line):
+                                        file.write(line + '\n')
+                                else:
+                                    file.write(line + '\n')
+                        os.remove(chunk_name)
+                file.close()
+                print('----------------------------------------------------------------------------------')
+                print('The article {} has been merged into one file'.format(self.availableOptions['article']))
+                print('----------------------------------------------------------------------------------')
 
 
     def run(self):

@@ -21,9 +21,9 @@ def main(*args):
         option, sep, value = arg.partition(':')
         if option.startswith('-'):
             option = option[1:]
-            if option == 'article':
+            if option == 'file':
                 opts[option] = value or input(
-                    'Enter the article: ')
+                    'Enter the file: ')
                 continue
     article_ids = revision_extractor(opts)
     article_ids.revision_id_extractor()
@@ -32,18 +32,18 @@ def main(*args):
 
 class revision_extractor():
     
-    article = {'article':''}
+    article = {'file':''}
 
     def __init__(self,params):
 
-        self.article['article'] = params['article']
+        self.article['file'] = params['file']
 
     def revision_id_extractor(self):
 
-        base_file_name = self.article['article'] + '/' + self.article['article'] + '.csv'
+        base_file_name = 'data/' + self.article['file'] + '/' + self.article['file'] + '.csv'
         base_file = pd.read_csv(base_file_name, error_bad_lines=False)
 
-        output_file_name = 'revision_ids_' + self.article['article'] + '.csv'
+        output_file_name = 'revision_ids_' + self.article['file'] + '.csv'
         output_file = pd.DataFrame(columns = ['rev_id','labels'])
 
         for rev in base_file['revision_id']:
@@ -52,12 +52,13 @@ class revision_extractor():
             
         output_file.to_csv(path_or_buf = 'revision_ids_files/' + output_file_name, index = False)
 
-        print('Revision ids file of ' + self.article['article'] + ' created')
+        print('Revision ids file of ' + self.article['file'] + ' created')
         
         
 
     def dummy_labels_adder(filename):
         return 0        
 
-os.mkdir('revision_ids_files')
+if not os.path.exists('revision_ids_files'):
+    os.makedirs('revision_ids_files')
 main()
