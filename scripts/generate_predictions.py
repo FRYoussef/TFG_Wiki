@@ -10,9 +10,7 @@ title = ''
 def main(*args):
     """
     Process command line arguments and invoke bot.
-
     If args is an empty list, sys.argv is used.
-
     @param args: command line arguments
     @type args: unicode
     """
@@ -43,13 +41,14 @@ class predictions_generator():
 
         self.article['file'] = params['file']
         self.article['base_file'] = params['base_file']
+                   
 
     def generate_predictions(self):
 
         base_file_name = self.article['file']
         base_file = pd.read_csv(base_file_name, error_bad_lines=False)
 
-        intentions = ['counter-vandalism','fact-update','refactoring','copy-editing','other','wikification',
+        intentions = ['counter-vandalism','fact-update','refactoring','copy-editing','wikification',
               'vandalism','simplification','elaboration','verifiability','process','clarification','disambiguation',
               'point-of-view']
         
@@ -57,10 +56,10 @@ class predictions_generator():
         classifiers = {}
         for intention in intentions:
             model = joblib.load('trained_models/' + intention + '_classificator.plk')
-            classifiers[intention] =  model 
+            classifiers[intention] =  model
         
         #To store the predicted values of each intention
-        results = {'revision_id':[],'counter-vandalism':[],'fact-update':[],'refactoring':[],'copy-editing':[],'other':[],'wikification':[],
+        results = {'revision_id':[],'counter-vandalism':[],'fact-update':[],'refactoring':[],'copy-editing':[],'wikification':[],
             'vandalism':[],'simplification':[],'elaboration':[],'verifiability':[],'process':[],'clarification':[],'disambiguation':[],
             'point-of-view':[]}
         
@@ -68,42 +67,39 @@ class predictions_generator():
         results['revision_id'] = base_file.iloc[:,0]
         #Load the features as X to predict
         X = base_file.iloc[:, :-14]
-
         for intention in intentions:
     
             print("Predicting labels for " + intention)
             predictions_file = classifiers[intention].predict(X)
-    
             for line in predictions_file:
                 results[intention].append(line)
-        
+                
         print("Labels predicted")
-        
-        results_dataframe = pd.DataFrame.from_dict(results)
-        
+        results_dataframe = pd.DataFrame.from_dict(results) 
         output = pd.read_csv(self.article['base_file'], sep=',')
         #create array of Nones to store the labels with the appropiate format (one single column for all intentions
         labels = [None] * len(results_dataframe.index)
-        
+    
         for intention in intentions:
     
             offset = 0
     
             for line in results[intention]:
-        
+    
                 if labels[offset] == None:
                     labels[offset] = str(results['revision_id'][offset]) + ':'
                 if line == 1:
                     labels[offset] = labels[offset] + intention + ','
         
                 offset += 1
-        
+
         labels_dataframe = pd.DataFrame(columns=['revision_id', 'intentionality'])
         for line in labels:
-   
+
             data = line.split(':')
             data_id = data[0]
-            data_intention = data[1]
+            data_intention = data[1].split(',')
+            data_intention.remove('')
     
             data = pd.DataFrame({'revision_id':[data_id],'intentionality':[data_intention]})
             labels_dataframe = labels_dataframe.append(data)
@@ -113,6 +109,6 @@ class predictions_generator():
         output = output.merge(labels_dataframe, on = 'revision_id', how = 'inner')
 
 
-        output.to_csv(path_or_buf = 'test_script.csv', index = False)            
+        output.to_csv(path_or_buf = self.article['base_file'], index = False) 
 
 main()
