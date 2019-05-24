@@ -1,3 +1,18 @@
+"""
+This script group the editor's of an article in different brackets
+based on the number of editions they have performed
+
+This script supports the following command line parameters:
+
+-
+
+"""
+#
+# Authors: Ignacio Garcia Sanchez-Migallon
+# Date: 24/05/2019
+# Distributed under the terms of the GPLv3 license. 
+#
+
 import numpy as np
 import pandas as pd
 

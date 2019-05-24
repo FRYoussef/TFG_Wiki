@@ -1,3 +1,21 @@
+"""
+This script filter a Wikipedia corpus of articles based on different parameters
+
+This script supports the following command line parameters:
+
+    -filter:#     The kind of filter to apply  (e.low/intermediate/high)
+        -low:#     Select only the editors with less than 5 editions  
+        -intermediate: Select only the editors that performed between 5 and 50 editions
+        -high: Select only the editors with more than 50 editions
+
+"""
+#
+# Authors: Ignacio Garcia Sanchez-Migallon
+# Date: 24/05/2019
+# Distributed under the terms of the GPLv3 license. 
+#
+
+
 import numpy as np
 import pandas as pd
 import sys
@@ -28,7 +46,7 @@ def main(*args):
 
     return 0
 
-def worst_filter(self):
+def low_filter(self):
 
     for i in range(0,len(self.count)):
         if self.count[i] == '1' or self.count[i] == '[2-5)':
@@ -36,7 +54,7 @@ def worst_filter(self):
 
     corpus = self.corpus.loc[self.corpus['resource'].isin(self.editors_to_keep)]
     
-    corpus.to_csv(path_or_buf = 'data/corpus/corpus_worst_editors.csv', index = False)
+    corpus.to_csv(path_or_buf = 'data/corpus/low_editors.csv', index = False)
 
 def intermediate_filter(self):
     
@@ -46,7 +64,7 @@ def intermediate_filter(self):
 
     corpus = self.corpus.loc[self.corpus['resource'].isin(self.editors_to_keep)]
     
-    corpus.to_csv(path_or_buf = 'data/corpus/corpus_intermediate_editors.csv', index = False)
+    corpus.to_csv(path_or_buf = 'data/corpus/intermediate_editors.csv', index = False)
     
 def best_filter(self):
     for i in range(0,len(self.count)):
@@ -55,7 +73,7 @@ def best_filter(self):
 
     corpus = self.corpus.loc[self.corpus['resource'].isin(self.editors_to_keep)]
     
-    corpus.to_csv(path_or_buf = 'data/corpus/corpus_best_editors.csv', index = False)
+    corpus.to_csv(path_or_buf = 'data/corpus/best_editors.csv', index = False)
 
 def casual_filter(self):
 
@@ -90,16 +108,16 @@ class corpus_filter():
     def filterApplier(self):
 
         call =  self.filtro['filter']
-        if call == 'worst':
-            worst_filter(self)
+        if call == 'low':
+            low_filter(self)
         elif call == 'intermediate':
             intermediate_filter(self)
-        elif call == 'best':
+        elif call == 'high':
             best_filter(self)
         elif call == 'casual':
             casual_filter(self)
         else:
-            print("Introduzca un filtro de entre [worst, intermediate, best, casual]")
+            print("Introduzca un filtro de entre [low, intermediate, best, casual]")
         
 main()
 

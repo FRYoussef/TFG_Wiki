@@ -1,3 +1,19 @@
+"""
+This script extract de revision id's from a Wikipedia's parsed dump
+
+This script supports the following command line parameters:
+
+    -file:#     The article's name to extract de id's (e.g. leche)
+
+"""
+#
+# Authors: Ignacio Garcia Sanchez-Migallon
+# Date: 24/05/2019
+# Distributed under the terms of the GPLv3 license. 
+#
+
+
+
 import numpy as np
 import pandas as pd
 import sys

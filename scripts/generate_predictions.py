@@ -1,3 +1,20 @@
+"""
+This script generate predictions of intentions behind each revision
+based on the Wikipedia's diff results.
+
+This script supports the following command line parameters:
+
+    -file:#     The output of Wikipedia's diff  (e.g revision_ids_leche_featured)
+    -base_file:#      The original article's name (e.g leche)
+
+"""
+#
+# Authors: Ignacio Garcia Sanchez-Migallon
+# Date: 24/05/2019
+# Distributed under the terms of the GPLv3 license. 
+#
+
+
 import numpy as np
 import pandas as pd
 from sklearn.externals import joblib
