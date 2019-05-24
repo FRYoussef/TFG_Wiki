@@ -1,4 +1,4 @@
-page_id,page_title,page_ns,revision_id,timestamp,contributor_id,resource,bytes,intentionality
+page_id,page_title,page_ns,revision_id,timestamp,contributor_id,org:resource,bytes,intentionality
 10058,|Ácido desoxirribonucleico|,0,161,2002-01-11T01:06:09Z,0,|imported>Fidel.G|,276,elaboration  
 10058,|Ácido desoxirribonucleico|,0,6683,2002-10-23T09:34:14Z,0,|conversion script|,276,"copy-editing,wikification"
 10058,|Ácido desoxirribonucleico|,0,22120,2003-08-03T17:40:18Z,30,|Youssefsan|,1579,wikification  

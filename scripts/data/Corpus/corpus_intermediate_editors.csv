@@ -1,4 +1,4 @@
-page_id,page_title,page_ns,revision_id,timestamp,contributor_id,resource,bytes,intentionality
+page_id,page_title,page_ns,revision_id,timestamp,contributor_id,org:resource,bytes,intentionality
 10058,|Ácido desoxirribonucleico|,0,6684,2002-10-24T07:20:14Z,7,|Maveric149|,286, 
 10058,|Ácido desoxirribonucleico|,0,8788,2002-10-24T07:21:28Z,7,|Maveric149|,342,wikification  
 10058,|Ácido desoxirribonucleico|,0,9088,2002-12-22T07:08:00Z,1,|AstroNomo|,350, 
